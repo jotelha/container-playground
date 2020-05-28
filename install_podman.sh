@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euxo pipefail
+
 # CentOS 8
 sudo dnf -y module disable container-tools
 sudo dnf -y install 'dnf-command(copr)'

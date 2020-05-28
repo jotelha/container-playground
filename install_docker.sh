@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euxo pipefail
 
 # https://docs.docker.com/engine/install/centos/
 sudo yum remove -y docker \

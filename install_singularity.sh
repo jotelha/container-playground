@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euxo pipefail
 
 # https://sylabs.io/guides/3.5/admin-guide/installation.html
 sudo yum update -y && \
@@ -10,6 +11,9 @@ sudo yum update -y && \
      wget \
      squashfs-tools \
      cryptsetup
+
+mkdir -p ${HOME}/src
+cd ${HOME}/src
 
 # https://golang.org/dl/
 export VERSION=1.14.3 OS=linux ARCH=amd64 && \  # Replace the values as needed

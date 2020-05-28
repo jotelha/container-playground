@@ -2,20 +2,37 @@
 SHELL := /bin/bash
 
 .PHONY: install-podman
-install-podman: install-basics
+install-podman: /usr/bin/podman
+
+/usr/bin/podman: /usr/bin/make
     bash install_podman.sh
 
 .PHONY: install-singularity
-install-singularity: install-basics
+install-singularity: /usr/local/bin/singularity
+
+/usr/local/bin/singularity: /usr/bin/make
     bash install_singularity.sh
 
 .PHONY: install-docker
-install-docker: install-basics
+install-docker: /usr/bin/docker
+
+/usr/bin/docker: /usr/bin/make
     bash install_docker.sh
 
-.PHONY: install-basics
-install-basics:
-    sudo yum install -y git make
+.PHONY: install-lmod
+install-lmod: /opt/apps/lmod/lmod
+
+/opt/apps/lmod/lmod: /opt/apps/lua/lua, /usr/bin/make
+    bash install_lmod.sh
+
+/opt/apps/lua/lua: /usr/bin/make
+    bash install_lua.sh
+
+/usr/bin/make:
+    sudo yum install -y make
+
+/usr/bin/python3:
+    sudo yum install -y python3
 
 .PHONY: list
 list:
