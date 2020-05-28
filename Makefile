@@ -2,6 +2,7 @@
 SHELL := /bin/bash
 
 .PHONY: install-podman
+install-podman: install-basics
     bash install_podman.sh
 
 .PHONY: install-singularity
@@ -14,6 +15,8 @@ install-docker: install-basics
 
 .PHONY: install-basics
 install-basics:
-    sudo apt-get update
-    sudo apt-get -y install python3-venv
+    sudo yum install -y git make
 
+.PHONY: list
+list:
+    @$(MAKE) -pRrq -f $(lastword $(MAKEFILE_LIST)) : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$'

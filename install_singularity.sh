@@ -1,21 +1,17 @@
 #!/bin/bash
 
-# https://sylabs.io/guides/3.5/user-guide/quick_start.html#quick-installation-steps
-# accessed 2020/05/18
-sudo apt-get install -y \
-    build-essential \
-    libssl-dev \
-    uuid-dev \
-    libgpgme11-dev \
-    squashfs-tools \
-    libseccomp-dev \
-    wget \
-    pkg-config \
-    git \
-    cryptsetup
+# https://sylabs.io/guides/3.5/admin-guide/installation.html
+sudo yum update -y && \
+     sudo yum groupinstall -y 'Development Tools' && \
+     sudo yum install -y \
+     openssl-devel \
+     libuuid-devel \
+     libseccomp-devel \
+     wget \
+     squashfs-tools \
+     cryptsetup
 
 # https://golang.org/dl/
-
 export VERSION=1.14.3 OS=linux ARCH=amd64 && \  # Replace the values as needed
   wget https://dl.google.com/go/go$VERSION.$OS-$ARCH.tar.gz && \ # Downloads the required Go package
   sudo tar -C /usr/local -xzvf go$VERSION.$OS-$ARCH.tar.gz && \ # Extracts the archive

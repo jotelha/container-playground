@@ -1,32 +1,25 @@
 #!/bin/bash
 
-# https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
-# accessed: 2020/05/18
-sudo apt-get remove docker docker-engine docker.io containerd runc
-sudo apt-get update
-sudo apt-get -y install \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg-agent \
-    software-properties-common
+# https://docs.docker.com/engine/install/centos/
+sudo yum remove -y docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-engine
 
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+sudo yum install -y yum-utils
 
-sudo apt-key fingerprint 0EBFCD88
+sudo yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
 
-sudo add-apt-repository \
-   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-   eoan \
-   stable"
+sudo yum install -y docker-ce docker-ce-cli containerd.io
+# GPG key: 060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35
 
-# sudo add-apt-repository \
-#   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-#   $(lsb_release -cs) \
-#   stable"
-
-sudo apt-get update
-sudo apt-get -y install docker-ce docker-ce-cli containerd.io
+sudo systemctl start docker
 
 # https://docs.docker.com/compose/install/
 # accessed: 2020/05/18
