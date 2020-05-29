@@ -19,10 +19,16 @@ install-docker: /usr/bin/docker
 /usr/bin/docker: /usr/bin/make
     bash install_docker.sh
 
+.PHONY: install-eb
+install-eb: $${HOME}/.local/easybuild
+
+$${HOME}/.local/easybuild: /opt/apps/lmod/lmod /usr/bin/python3
+    bash install_eb.sh
+
 .PHONY: install-lmod
 install-lmod: /opt/apps/lmod/lmod
 
-/opt/apps/lmod/lmod: /opt/apps/lua/lua, /usr/bin/make
+/opt/apps/lmod/lmod: /opt/apps/lua/lua /usr/bin/make
     bash install_lmod.sh
 
 /opt/apps/lua/lua: /usr/bin/make
