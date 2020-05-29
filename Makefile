@@ -1,43 +1,61 @@
 .RECIPEPREFIX := $(.RECIPEPREFIX) 
 SHELL := /bin/bash
 
-.PHONY: install-podman
-install-podman: /usr/bin/podman
-
-/usr/bin/podman: /usr/bin/make
-    bash install_podman.sh
-
-.PHONY: install-singularity
-install-singularity: /usr/local/bin/singularity
-
-/usr/local/bin/singularity: /usr/bin/make
-    bash install_singularity.sh
+DEVEL_MODULE_DIR=$${HOME}/.local/easybuild/modules/all/Devel
+DEVEL_MODULE_FILE=$(DEVEL_MODULE_DIR)/InstallSoftware.lua
+DOCKER_EXE=/usr/bin/docker
+EB_DIR=$${HOME}/.local/easybuild
+LMOD_DIR=/opt/apps/lmod/lmod
+LUA_DIR=/opt/apps/lua/lua
+MAKE_EXE=/usr/bin/make
+PODMAN_EXE=/usr/bin/podman
+PYTHON_EXE=/usr/bin/python3
+SINGULARITY_EXE=/usr/local/bin/singularity
 
 .PHONY: install-docker
-install-docker: /usr/bin/docker
+install-docker: $(DOCKER_EXE)
 
-/usr/bin/docker: /usr/bin/make
-    bash install_docker.sh
+.PHONY: install-podman
+install-podman: $(PODMAN_EXE)
+
+.PHONY: install-singularity
+install-singularity: $(SINGULARITY_EXE)
+
+.PHONY: install-devel-mod
+install-devel-mod: $(DEVEL_MODULE_FILE)
 
 .PHONY: install-eb
-install-eb: $${HOME}/.local/easybuild
-
-$${HOME}/.local/easybuild: /opt/apps/lmod/lmod /usr/bin/python3
-    bash install_eb.sh
+install-eb: $(EB_DIR)
 
 .PHONY: install-lmod
-install-lmod: /opt/apps/lmod/lmod
+install-lmod: $(LMOD_DIR)
 
-/opt/apps/lmod/lmod: /opt/apps/lua/lua /usr/bin/make
+$(PODMAN_EXE): /usr/bin/make
+    bash install_podman.sh
+
+$(SINGULARITY_EXE): $(MAKE_EXE)
+    bash install_singularity.sh
+
+$(DOCKER_EXE): $(MAKE_EXE)
+    bash install_docker.sh
+
+$(DEVEL_MODULE_FILE): $(EB_DIR)
+    mkdir -p $(DEVEL_MODULE_DIR)
+    cp eb/InstallSoftware.lua $(DEVEL_MODULE_FILE)
+
+$(EB_DIR): $(LMOD_DIR) $(PYTHON_EXE)
+    bash install_eb.sh
+
+$(LMOD_DIR): $(LUA_DIR) $(MAKE_EXE)
     bash install_lmod.sh
 
-/opt/apps/lua/lua: /usr/bin/make
+$(LUA_DIR): $(MAKE_EXE)
     bash install_lua.sh
 
-/usr/bin/make:
+$(MAKE_EXE):
     sudo yum install -y make
 
-/usr/bin/python3:
+$(PYTHON_EXE):
     sudo yum install -y python3
 
 .PHONY: list
