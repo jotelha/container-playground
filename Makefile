@@ -2,6 +2,8 @@
 SHELL := /bin/bash
 
 # general
+PKG_MGR=apt-get
+
 PREFIX := /mnt/dat
 APPS_ROOT := $(PREFIX)/opt/apps
 SOURCES_DIR := $(PREFIX)/src
@@ -64,9 +66,13 @@ PODMAN_EXE := $(SYSTEM_BIN)/podman
 
 # Go-related
 GO_VERSION := 1.14.3
+GO_OS := linux
+GO_ARCH := amd64
+GO_SRC := $(SOURCES_DIR)/go$(GO_VERSION).$(GO_OS)-$(GO_ARCH).tar.gz
 
 # Singularity-related
 SINGULARITY_VERSION := 3.5.2
+SINGULARITY_SRC := $(SOURCES_DIR)/singularity-$(SINGULARITY_VERSION).tar.gz
 SINGULARITY_EXE := $(SYSTEM_LOCAL_BIN)/singularity
 
 .PHONY: all
@@ -94,10 +100,7 @@ install-lmod: $(LMOD_EXE)
     install-lmod
 
 # podman
-.ONESHELL:
 $(PODMAN_EXE): $(MAKE_EXE)
-    #!/bin/bash
-    set -euxo pipefail
     # CentOS 8
     sudo dnf -y module disable container-tools
     sudo dnf -y install 'dnf-command(copr)'
@@ -107,19 +110,10 @@ $(PODMAN_EXE): $(MAKE_EXE)
 
 # go & singularity
 .ONESHELL:
-$(GO_EXE):
-    set -euxo pipefail
+$(GO_EXE): $(GO_SRC)
     # actually, no sources, just binary package
-    mkdir -p $(SOURCES_DIR)
-    cd $(SOURCES_DIR)
     # https://golang.org/dl/
-    VERSION=$(GO_VERSION) OS=linux ARCH=amd64  # Replace the values as needed
-    wget https://dl.google.com/go/go$$VERSION.$$OS-$$ARCH.tar.gz  # Downloads the required Go package
-    sudo tar -C $(SYSTEM_LOCAL) -xzvf go$$VERSION.$$OS-$$ARCH.tar.gz  # Extracts the archive
-    -rm go$$VERSION.$$OS-$$ARCH.tar.gz
-    # sha256 93023778d4d1797b7bc6a53e86c3a9b150c923953225f8a48a2d5fabc971af56
-    # echo 'export PATH=/usr/local/go/bin:$PATH' >> $HOME/.bashrc && \
-    #  source $HOME/.bashrc
+    sudo tar -C $(SYSTEM_LOCAL) -xzvf $(GO_SRC) # Extracts the archive
     LINE='export PATH="$(SYSTEM_LOACL)/go/bin:$$PATH"'
     FILE=$(SYSTEM_BASHRC)
     MSG="Added following line to $$FILE, rerun 'source $$FILE' in your current shell session."
@@ -127,31 +121,37 @@ $(GO_EXE):
     @echo $$MSG
     @echo $$LINE
 
-.ONESHELL:
-$(SINGULARITY_EXE): $(MAKE_EXE)
-    set -euxo pipefail
-    # https://sylabs.io/guides/3.5/admin-guide/installation.html
-    sudo yum update -y && \
-         sudo yum groupinstall -y 'Development Tools' && \
-         sudo yum install -y \
-         openssl-devel \
-         libuuid-devel \
-         libseccomp-devel \
-         wget \
-         squashfs-tools \
-         cryptsetup
+$(GO_SRC):
+    mkdir -p $(SOURCES_DIR)
+    wget -O $@ https://dl.google.com/go/go$(GO_VERSION).$(GO_OS)-$(GO_ARCH).tar.gz  # Downloads the required Go package
+
+
+$(SINGULARITY_EXE): $(SINGULARITY_SRC) $(MAKE_EXE)
+    # https://sylabs.io/guides/3.5/user-guide/quick_start.html#quick-installation-steps
+    # accessed 2020/05/18
+    sudo $(PKG_MGR) install -y \
+        build-essential \
+        libssl-dev \
+        uuid-dev \
+        libgpgme11-dev \
+        squashfs-tools \
+        libseccomp-dev \
+        wget \
+        pkg-config \
+        git \
+        cryptsetup
 
     mkdir -p $(SOURCES_DIR)
-    cd $(SOURCES_DIR)
+    -cd $(SOURCES_DIR) && rm singularity-$(SINGULARITY_VERSION).tar.gz
+    cd $(SOURCES_DIR) && wget https://github.com/sylabs/singularity/releases/download/v$(SINGULARITY_VERSION)/singularity-$(SINGULARITY_VERSION).tar.gz
+    -rm -rf $(SOURCES_DIR)/singurlarity
+    cd $(SOURCES_DIR) && tar -xzf singularity-$(SINGULARITY_VERSION).tar.gz
+    source $(SYSTEM_BASHRC) && cd $(SOURCES_DIR)/singularity && ./mconfig && make -C builddir && sudo make -C builddir install
 
-    VERSION=$(SINGULARITY_VERSION)
-    wget https://github.com/sylabs/singularity/releases/download/v$${VERSION}/singularity-$${VERSION}.tar.gz
-    tar -xzf singularity-$${VERSION}.tar.gz
-    source $(SYSTEM_BASHRC)
-    cd singularity
-    ./mconfig
-    make -C builddir
-    sudo make -C builddir install
+$(SINGULARITY_SRC):
+    mkdir -p $(SOURCES_DIR)
+    # -cd $(SOURCES_DIR) && rm singularity-$(SINGULARITY_VERSION).tar.gz
+    wget -O $@ https://github.com/sylabs/singularity/releases/download/v$(SINGULARITY_VERSION)/singularity-$(SINGULARITY_VERSION).tar.gz
 
 # docker
 .ONESHELL:
@@ -184,6 +184,7 @@ $(DOCKER_EXE): $(MAKE_EXE)
 #    cp eb/InstallSoftware.lua $(DEVEL_MODULE_FILE)
 
 # easybuild
+.ONESHELL:
 $(EB_EXE): $(LMOD_EXE) $(PYTHON_EXE)
     # https://easybuild.readthedocs.io/en/latest/Installation.html
     mkdir -p $(SOURCES_DIR)
