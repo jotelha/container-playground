@@ -1,7 +1,7 @@
 # export SOFTWAREROOT=$HOME/software
 export STAGE=2019a
 
-prefix=${HOME}/.local/easybuild
+prefix=/mnt/dat/easybuild
 buidlpath=${prefix}/build
 container_path=${prefix}/containers
 install_path=${prefix}/easybuild
