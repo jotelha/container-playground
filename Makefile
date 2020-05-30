@@ -7,8 +7,8 @@ APPS_ROOT := $(PREFIX)/opt/apps
 SOURCES_DIR := $(PREFIX)/src
 
 # OS-specific
-PKG_MGR=apt-get
-VERSION_ID=20.04
+PKG_MGR=yum
+# VERSION_ID=8
 SYSTEM_PROFILE_D := /etc/profile.d
 # system-dependent fixed
 SYSTEM_BIN := /usr/bin
@@ -16,7 +16,7 @@ SYSTEM_BIN := /usr/bin
 SYSTEM_LOCAL := /usr/local
 SYSTEM_LOCAL_BIN := $(SYSTEM_LOCAL)/bin
 # system-dependent fixed
-SYSTEM_BASHRC := /etc/bash.bashrc
+SYSTEM_BASHRC := /etc/bashrc
 SYSTEM_BASH_PROFILE := /etc/profile
 
 MAKE_EXE := $(SYSTEM_BIN)/make
@@ -154,18 +154,13 @@ $(SINGULARITY_EXE): $(MAKE_EXE)
          wget \
          squashfs-tools \
          cryptsetup
+    cd $(SOURCES_DIR) && tar -xzf singularity-$(SINGULARITY_VERSION).tar.gz
+    . $(SYSTEM_BASHRC) && cd singularity && ./mconfig && make -C builddir &&  sudo make -C builddir install
 
+$(SINGULARITY_SRC):
     mkdir -p $(SOURCES_DIR)
-    cd $(SOURCES_DIR)
-
-    VERSION=$(SINGULARITY_VERSION)
-    wget https://github.com/sylabs/singularity/releases/download/v$${VERSION}/singularity-$${VERSION}.tar.gz
-    tar -xzf singularity-$${VERSION}.tar.gz
-    source $(SYSTEM_BASHRC)
-    cd singularity
-    ./mconfig
-    make -C builddir
-    sudo make -C builddir install
+    -rm $@
+    wget -O $@ https://github.com/sylabs/singularity/releases/download/v$(SINGULARITY_VERSION)/singularity-$(SINGULARITY_VERSION).tar.gz
 
 # docker
 .ONESHELL:
