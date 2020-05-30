@@ -82,6 +82,9 @@ install-singularity: $(SINGULARITY_EXE)
 # .PHONY: install-devel-mod
 # install-devel-mod: $(DEVEL_MODULE_FILE)
 
+.PHONY: configure-eb
+configure-eb: install-eb eb_env.sh eb-repositories
+
 .PHONY: install-eb
 install-eb: $(EB_EXE)
 
@@ -242,19 +245,20 @@ $(LUA_EXE): $(MAKE_EXE)
 eb-repositories: $(EB_GIT_REPO_ROOT)/easybuild $(EB_GIT_REPO_ROOT)/easybuild-easyblocks $(EB_GIT_REPO_ROOT)/easybuild-easyframework $(EB_GIT_REPO_ROOT)/easybuild-easyconfigs $(EB_GIT_REPO_ROOT)/JSC
 
 $(EB_GIT_REPO_ROOT)/easybuild:
-    cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild.git
+    mkdir -p $(EB_GIT_REPO_ROOT) && cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild.git
 
 $(EB_GIT_REPO_ROOT)/easybuild-easyblocks:
-    cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-easyblocks.git
+    mkdir -p $(EB_GIT_REPO_ROOT) && cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-easyblocks.git
 
 $(EB_GIT_REPO_ROOT)/easybuild-easyframework:
-    cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-framework.git
+    mkdir -p $(EB_GIT_REPO_ROOT) && cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-framework.git
 
 $(EB_GIT_REPO_ROOT)/easybuild-easyconfigs:
-    cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-easyconfigs.git
+    mkdir -p $(EB_GIT_REPO_ROOT) && cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-easyconfigs.git
 
 .ONESHELL:
 $(EB_GIT_REPO_ROOT)/JSC:
+    mkdir -p $(EB_GIT_REPO_ROOT)
     cd $(EB_GIT_REPO_ROOT)
     git clone https://github.com/jotelha/JSC.git
     cd JSC
