@@ -259,7 +259,7 @@ eb_env.sh:
         export STAGE=$(EB_STAGE)
 
         prefix=$(EB_ROOT)
-        buidlpath=\$${prefix}/build
+        build_path=\$${prefix}/build
         container_path=\$${prefix}/containers
         install_path=\$${prefix}/easybuild
         repository_path=\$${prefix}/ebfiles_repo
@@ -283,7 +283,7 @@ eb_env.sh:
         export EASYBUILD_ALLOW_LOADED_MODULES=EasyBuild
         export EASYBUILD_SOURCEPATH=\$${sources_path}
         export EASYBUILD_INSTALLPATH=\$${install_path}
-        export EASYBUILD_BUILDPATH=/dev/shm
+        export EASYBUILD_BUILDPATH=\$${build_path}
         export EASYBUILD_INCLUDE_TOOLCHAINS="\$${custom_toolchains_path}/*.py,\$${custom_toolchains_path}/fft/*.py,\$${custom_toolchains_path}/compiler/*.py"
         # export EASYBUILD_INCLUDE_EASYBLOCKS="\$${custom_easyblocks_path}/*.py"
         export EASYBUILD_REPOSITORY=FileRepository
