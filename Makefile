@@ -16,6 +16,7 @@ SYSTEM_BIN := /usr/bin
 SYSTEM_LOCAL := /usr/local
 SYSTEM_LOCAL_BIN := $(SYSTEM_LOCAL)/bin
 # system-dependent fixed
+BASH_PROFILE := $${HOME}/.bash_profile
 SYSTEM_BASHRC := /etc/bashrc
 SYSTEM_BASH_PROFILE := /etc/profile
 
@@ -105,13 +106,13 @@ install-eb: $(EB_EXE)
     touch install-eb
 
 install-lmod: $(LMOD_EXE)
-    install-lmod
+    touch install-lmod
+
+install-lua: $(LUA_EXE)
+    touch install-lua
 
 # podman
-.ONESHELL:
 $(PODMAN_EXE): $(MAKE_EXE)
-    #!/bin/bash
-    set -euxo pipefail
     # CentOS 8
     sudo dnf -y module disable container-tools
     sudo dnf -y install 'dnf-command(copr)'
@@ -120,30 +121,16 @@ $(PODMAN_EXE): $(MAKE_EXE)
     sudo dnf -y install podman
 
 # go & singularity
-.ONESHELL:
-$(GO_EXE):
-    set -euxo pipefail
+$(GO_EXE): $(GO_SRC)
     # actually, no sources, just binary package
-    mkdir -p $(SOURCES_DIR)
-    cd $(SOURCES_DIR)
-    # https://golang.org/dl/
-    VERSION=$(GO_VERSION) OS=linux ARCH=amd64  # Replace the values as needed
-    wget https://dl.google.com/go/go$$VERSION.$$OS-$$ARCH.tar.gz  # Downloads the required Go package
-    sudo tar -C $(SYSTEM_LOCAL) -xzvf go$$VERSION.$$OS-$$ARCH.tar.gz  # Extracts the archive
-    -rm go$$VERSION.$$OS-$$ARCH.tar.gz
-    # sha256 93023778d4d1797b7bc6a53e86c3a9b150c923953225f8a48a2d5fabc971af56
-    # echo 'export PATH=/usr/local/go/bin:$PATH' >> $HOME/.bashrc && \
-    #  source $HOME/.bashrc
-    LINE='export PATH="$(SYSTEM_LOACL)/go/bin:$$PATH"'
-    FILE=$(SYSTEM_BASHRC)
-    MSG="Added following line to $$FILE, rerun 'source $$FILE' in your current shell session."
-    grep -qF -- "$$LINE" "$$FILE" || echo "$$LINE" | sudo tee -a "$$FILE"
-    @echo $$MSG
-    @echo $$LINE
+    sudo tar -C $(SYSTEM_LOCAL) -xzvf $(GO_SRC) # Extracts the archive
+    echo 'export PATH="$(GO_ROOT)/bin:$$PATH"' | sudo tee $(SYSTEM_PROFILE_D)/go_path.sh
 
-.ONESHELL:
-$(SINGULARITY_EXE): $(MAKE_EXE)
-    set -euxo pipefail
+$(GO_SRC):
+    mkdir -p $(SOURCES_DIR)
+    wget -O $@ https://dl.google.com/go/go$(GO_VERSION).$(GO_OS)-$(GO_ARCH).tar.gz  # Downloads the required Go package
+
+$(SINGULARITY_EXE): $(SINGULARITY_SRC) $(GO_EXE) $(MAKE_EXE)
     # https://sylabs.io/guides/3.5/admin-guide/installation.html
     sudo yum update -y && \
          sudo yum groupinstall -y 'Development Tools' && \
@@ -154,8 +141,9 @@ $(SINGULARITY_EXE): $(MAKE_EXE)
          wget \
          squashfs-tools \
          cryptsetup
+    -rm -rf $(SOURCES_DIR)/singurlarity
     cd $(SOURCES_DIR) && tar -xzf singularity-$(SINGULARITY_VERSION).tar.gz
-    . $(SYSTEM_BASHRC) && cd singularity && ./mconfig && make -C builddir &&  sudo make -C builddir install
+    source $(BASH_PROFILE) && cd $(SOURCES_DIR)/singularity && ./mconfig && make -C builddir && sudo make -C builddir install
 
 $(SINGULARITY_SRC):
     mkdir -p $(SOURCES_DIR)
@@ -187,25 +175,18 @@ $(DOCKER_EXE): $(MAKE_EXE)
     sudo curl -L "https://github.com/docker/compose/releases/download/$(DOCKER_COMPOSE_VERSION)/docker-compose-$$(uname -s)-$$(uname -m)" -o $(SYSTEM_LOCAL_BIN)/docker-compose
     sudo chmod +x $(SYSTEM_LOCAL_BIN)/docker-compose
 
-
 # $(DEVEL_MODULE_FILE): $(EB_ROOT)
 #    mkdir -p $(DEVEL_MODULE_DIR)
 #    cp eb/InstallSoftware.lua $(DEVEL_MODULE_FILE)
 
 # easybuild
-.ONESHELL:
 $(EB_EXE): $(LMOD_EXE) $(PYTHON_EXE)
     # https://easybuild.readthedocs.io/en/latest/Installation.html
     mkdir -p $(SOURCES_DIR)
     cd $(SOURCES_DIR) && curl -O https://raw.githubusercontent.com/easybuilders/easybuild-framework/develop/easybuild/scripts/bootstrap_eb.py
-    source $(SYSTEM_BASH_PROFILE) && cd $(SOURCES_DIR) && python3 bootstrap_eb.py $(EB_ROOT)
+    source $(BASH_PROFILE) && cd $(SOURCES_DIR) && python3 bootstrap_eb.py $(EB_ROOT)
     # update $MODULEPATH, and load the EasyBuild module
-    LINE='module use $(EB_MODULES_ROOT)'
-    FILE=$(SYSTEM_BASH_PROFILE)
-    MSG="Added following line to $$FILE, rerun 'source $$FILE' in your current shell session."
-    grep -qF -- "$$LINE" "$$FILE" || echo "$$LINE" | sudo tee -a "$$FILE"
-    @echo $$MSG
-    @echo $$LINE
+    echo 'module use $(EB_MODULES_ROOT)' | sudo tee $(SYSTEM_PROFILE_D)/eb_module_env.sh
 
 # lmod & lua
 $(LMOD_EXE): $(LMOD_SRC) $(LUA_EXE) $(MAKE_EXE)
