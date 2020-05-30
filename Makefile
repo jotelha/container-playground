@@ -261,7 +261,7 @@ eb_env.sh:
         prefix=$(EB_ROOT)
         build_path=\$${prefix}/build
         container_path=\$${prefix}/containers
-        install_path=\$${prefix}/easybuild
+        install_path=\$${prefix}
         repository_path=\$${prefix}/ebfiles_repo
         sources_path=\$${prefix}/sources
 
