@@ -20,6 +20,7 @@ PYTHON_EXE := $(SYSTEM_BIN)/python3
 
 # Lua-realted
 LUA_VERSION := 5.1.4.9
+LUA_SRC := $(SOURCES_DIR)/lua-$(LUA_VERSION).tar.bz2
 LUA_ROOT := $(APPS_ROOT)/lua/lua
 # fixed
 LUA_EXE := $(LUA_ROOT)/bin/lua
@@ -27,6 +28,7 @@ LUA_EXE := $(LUA_ROOT)/bin/lua
 
 # Lmod-related
 LMOD_VERSION := 8.2
+LMOD_SRC := $(SOURCES_DIR)/Lmod-$(LMOD_VERSION).tar.bz2
 LMOD_INSTALL_PREFIX := $(APPS_ROOT)
 LMOD_ROOT := $(LMOD_INSTALL_PREFIX)/lmod/lmod
 # fixed
@@ -203,43 +205,59 @@ $(EB_EXE): $(LMOD_EXE) $(PYTHON_EXE)
 
 # lmod & lua
 .ONESHELL:
-$(LMOD_EXE): $(LUA_EXE) $(MAKE_EXE)
+$(LMOD_EXE): $(LMOD_SRC) $(LUA_EXE) $(MAKE_EXE)
     set -euxo pipefail
     # https://lmod.readthedocs.io/en/latest/030_installing.html
-    mkdir -p $(SOURCES_DIR)
     cd $(SOURCES_DIR)
-    rm -rf Lmod-$(LMOD_VERSION)*
-    wget https://sourceforge.net/projects/lmod/files/Lmod-$(LMOD_VERSION).tar.bz2
+    rm -rf Lmod-$(LMOD_VERSION)
+    rm Lmod-$(LMOD_VERSION).tar
     bunzip2 Lmod-$(LMOD_VERSION).tar.bz2
     tar xf Lmod-$(LMOD_VERSION).tar
     cd Lmod-$(LMOD_VERSION)
     ./configure --prefix=$(LMOD_INSTALL_PREFIX)
-    sudo make install
+    make install
 
     sudo ln -fs $(LMOD_ROOT)/init/profile $(SYSTEM_PROFILE_D)/z00_lmod.sh
     sudo ln -fs $(LMOD_ROOT)/init/cshrc $(SYSTEM_PROFILE_D)/z00_lmod.csh
     # sudo ln -s /opt/apps/lmod/lmod/init/profile.fish   /etc/fish/conf.d/z00_lmod.fish
 
 .ONESHELL:
-$(LUA_EXE): $(MAKE_EXE)
+$(LMOD_SRC):
+    set -euxo pipefail
     # https://lmod.readthedocs.io/en/latest/030_installing.html
-    sudo mkdir -p $(APPS_ROOT)/lua/$(LUA_VERSION)
     mkdir -p $(SOURCES_DIR)
     cd $(SOURCES_DIR)
-    rm -rf lua-$(LUA_VERSION)*
+    rm -rf Lmod-$(LMOD_VERSION).tar.bz2
+    wget https://sourceforge.net/projects/lmod/files/Lmod-$(LMOD_VERSION).tar.bz2
+
+.ONESHELL:
+$(LUA_EXE): $(LUA_SRC) $(MAKE_EXE)
+    # https://lmod.readthedocs.io/en/latest/030_installing.html
+    cd $(SOURCES_DIR)
+    rm -rf lua-$(LUA_VERSION)
+    rm lua-$(LUA_VERSION).tar
     # https://www.lua.org/download.html
-    # curl -R -O http://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
-    wget https://sourceforge.net/projects/lmod/files/lua-$(LUA_VERSION).tar.bz2
     bunzip2 lua-$(LUA_VERSION).tar.bz2
     tar xf lua-$(LUA_VERSION).tar
     cd lua-$(LUA_VERSION)
     ./configure --prefix=$(APPS_ROOT)/lua/$(LUA_VERSION)
     make
-    sudo make install
+    mkdir -p $(APPS_ROOT)/lua/$(LUA_VERSION)
+    make install
     cd $(APPS_ROOT)/lua
-    sudo ln -s $(LUA_VERSION) lua
+    ln -fs $(LUA_VERSION) lua
     sudo mkdir -p $(SYSTEM_LOCAL_BIN)
-    sudo ln -s $(LUA_EXE) $(SYSTEM_LOCAL_BIN)
+    sudo ln -fs $(LUA_EXE) $(SYSTEM_LOCAL_BIN)
+
+.ONESHELL:
+$(LUA_SRC):
+    # https://lmod.readthedocs.io/en/latest/030_installing.html
+    mkdir -p $(SOURCES_DIR)
+    cd $(SOURCES_DIR)
+    rm -rf lua-$(LUA_VERSION).tar.bz2
+    # https://www.lua.org/download.html
+    # curl -R -O http://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
+    wget https://sourceforge.net/projects/lmod/files/lua-$(LUA_VERSION).tar.bz2
 
 # easybuild repositories
 eb-repositories: $(EB_GIT_REPO_ROOT)/easybuild $(EB_GIT_REPO_ROOT)/easybuild-easyblocks $(EB_GIT_REPO_ROOT)/easybuild-easyframework $(EB_GIT_REPO_ROOT)/easybuild-easyconfigs $(EB_GIT_REPO_ROOT)/JSC
