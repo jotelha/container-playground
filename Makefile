@@ -2,56 +2,73 @@
 SHELL := /bin/bash
 
 # general
-PREFIX=/mnt/dat
-APPS_ROOT=$(PREFIX)/opt/apps
-SOURCES_DIR=$(PREFIX)/src
-SYSTEM_PROFILE_D=/etc/profile.d  # system-dependent fixed
-SYSTEM_BIN=/usr/bin  # system-dependent fixed
-SYSTEM_LOCAL=/usr/local
-SYSTEM_LOCAL_BIN=$(SYSTEM_LOCAL)/bin  # system-dependent fixed
-SYSTEM_BASHRC=/etc/bashrc
-MAKE_EXE=$(SYSTEM_BIN)/make  # system-dependent fixed
-PYTHON_EXE=$(SYSTEM_BIN)/python3  # system-dependent fixed
+PREFIX := /mnt/dat
+APPS_ROOT := $(PREFIX)/opt/apps
+SOURCES_DIR := $(PREFIX)/src
+SYSTEM_PROFILE_D := /etc/profile.d
+# system-dependent fixed
+SYSTEM_BIN := /usr/bin
+# system-dependent fixed
+SYSTEM_LOCAL := /usr/local
+SYSTEM_LOCAL_BIN := $(SYSTEM_LOCAL)/bin
+# system-dependent fixed
+SYSTEM_BASHRC := /etc/bashrc
+MAKE_EXE := $(SYSTEM_BIN)/make
+# system-dependent fixed
+PYTHON_EXE := $(SYSTEM_BIN)/python3
+# system-dependent fixed
 
 # Lua-realted
-LUA_VERSION=5.1.4.9
-LUA_ROOT=$(APPS_ROOT)/lua/lua  # fixed
-LUA_EXE=$(LUA_ROOT)/bin/lua  # fixed
+LUA_VERSION := 5.1.4.9
+LUA_ROOT := $(APPS_ROOT)/lua/lua
+# fixed
+LUA_EXE := $(LUA_ROOT)/bin/lua
+# fixed
 
 # Lmod-related
-LMOD_VERSION=8.2
-LMOD_INSTALL_PREFIX=$(APPS_ROOT)
-LMOD_ROOT=$(LMOD_INSTALL_PREFIX)/lmod/lmod  # fixed
-LMOD_EXE=$(LMOD_ROOT)/libexec/lmod  # fixed
-LMOD_MODULES_ROOT=$(LMOD_ROOT)/modulefiles  # fixed
+LMOD_VERSION := 8.2
+LMOD_INSTALL_PREFIX := $(APPS_ROOT)
+LMOD_ROOT := $(LMOD_INSTALL_PREFIX)/lmod/lmod
+# fixed
+LMOD_EXE := $(LMOD_ROOT)/libexec/lmod
+# fixed
+LMOD_MODULES_ROOT := $(LMOD_ROOT)/modulefiles
+# fixed
 
-# DEVEL_MODULE_DIR=$(MODULES_ROOT)/all/Devel
-# DEVEL_MODULE_FILE=$(DEVEL_MODULE_DIR)/InstallSoftware.lua
+# DEVEL_MODULE_DIR := $(MODULES_ROOT)/all/Devel
+# DEVEL_MODULE_FILE := $(DEVEL_MODULE_DIR)/InstallSoftware.lua
 
 # eb-related
-EB_VERSION=4.2.1
-EB_ROOT=$(PREFIX)/opt/easybuild
-EB_EXE=$(EB_ROOT)/software/EasyBuild/$(EB_VERSION)/bin/eb  # fixed
-EB_MODULES_ROOT=$(EB_ROOT)/modules/all  # fixed
+EB_VERSION := 4.2.1
+EB_ROOT := $(PREFIX)/opt/easybuild
+EB_EXE := $(EB_ROOT)/software/EasyBuild/$(EB_VERSION)/bin/eb
+# fixed
+EB_MODULES_ROOT := $(EB_ROOT)/modules/all
+# fixed
 
-EB_STAGE=2019a
-EB_GIT_REPO_ROOT=$(EB_ROOT)/git
+EB_STAGE := 2019a
+EB_GIT_REPO_ROOT := $(EB_ROOT)/git
 
 # Docker-related
 # TODO: specific version
-DOCKER_COMPOSE_VERSION=1.25.5
-DOCKER_EXE=$(SYSTEM_BIN)/docker  # fixed
+DOCKER_COMPOSE_VERSION := 1.25.5
+DOCKER_EXE := $(SYSTEM_BIN)/docker
+# fixed
 
 # Podman-related
 # TODO: specific version
-PODMAN_EXE=$(SYSTEM_BIN)/podman  # fixed
+PODMAN_EXE := $(SYSTEM_BIN)/podman
+# fixed
 
 # Go-related
-GO_VERSION=1.14.3
+GO_VERSION := 1.14.3
 
 # Singularity-related
-SINGULARITY_VERSION=3.5.2
-SINGULARITY_EXE=$(SYSTEM_LOCAL_BIN)/singularity
+SINGULARITY_VERSION := 3.5.2
+SINGULARITY_EXE := $(SYSTEM_LOCAL_BIN)/singularity
+
+.PHONY: all
+all: $(wildcard install-*)
 
 .PHONY: install-docker
 install-docker: $(DOCKER_EXE)
@@ -244,7 +261,7 @@ $(EB_GIT_REPO_ROOT)/JSC:
     git checkout hfr13-eb-4.2
 
 # eb env file
-eb/env.sh:
+eb_env.sh:
     cat <<- EOF > $@
         # export SOFTWAREROOT=$HOME/software
         export STAGE=$(EB_STAGE)
@@ -303,3 +320,7 @@ $(PYTHON_EXE):
 .PHONY: list
 list:
     @$(MAKE) -pRrq -f $(lastword $(MAKEFILE_LIST)) : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$'
+
+.PHONY: test
+test:
+    $(foreach var,$(.VARIABLES),$(info $(var) = $($(var))))
