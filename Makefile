@@ -72,26 +72,26 @@ SINGULARITY_EXE := $(SYSTEM_LOCAL_BIN)/singularity
 .PHONY: all
 all: $(wildcard install-*)
 
-.PHONY: install-docker
 install-docker: $(DOCKER_EXE)
+    touch install-docker
 
-.PHONY: install-podman
 install-podman: $(PODMAN_EXE)
+    touch install-podman
 
-.PHONY: install-singularity
 install-singularity: $(SINGULARITY_EXE)
+    touch install-singularity
 
 # .PHONY: install-devel-mod
 # install-devel-mod: $(DEVEL_MODULE_FILE)
 
-.PHONY: configure-eb
 configure-eb: install-eb eb_env.sh eb-repositories
+    touch configure-eb
 
-.PHONY: install-eb
 install-eb: $(EB_EXE)
+    touch install-eb
 
-.PHONY: install-lmod
 install-lmod: $(LMOD_EXE)
+    install-lmod
 
 # podman
 .ONESHELL:
@@ -116,14 +116,14 @@ $(GO_EXE):
     VERSION=$(GO_VERSION) OS=linux ARCH=amd64  # Replace the values as needed
     wget https://dl.google.com/go/go$$VERSION.$$OS-$$ARCH.tar.gz  # Downloads the required Go package
     sudo tar -C $(SYSTEM_LOCAL) -xzvf go$$VERSION.$$OS-$$ARCH.tar.gz  # Extracts the archive
-    rm go$$VERSION.$$OS-$$ARCH.tar.gz
+    -rm go$$VERSION.$$OS-$$ARCH.tar.gz
     # sha256 93023778d4d1797b7bc6a53e86c3a9b150c923953225f8a48a2d5fabc971af56
     # echo 'export PATH=/usr/local/go/bin:$PATH' >> $HOME/.bashrc && \
     #  source $HOME/.bashrc
     LINE='export PATH="$(SYSTEM_LOACL)/go/bin:$$PATH"'
     FILE=$(SYSTEM_BASHRC)
     MSG="Added following line to $$FILE, rerun 'source $$FILE' in your current shell session."
-    grep -qF -- "$$LINE" "$$FILE" || echo "$$LINE" >> "$$FILE"
+    grep -qF -- "$$LINE" "$$FILE" || echo "$$LINE" | sudo tee -a "$$FILE"
     @echo $$MSG
     @echo $$LINE
 
@@ -184,83 +184,57 @@ $(DOCKER_EXE): $(MAKE_EXE)
 #    cp eb/InstallSoftware.lua $(DEVEL_MODULE_FILE)
 
 # easybuild
-.ONESHELL:
 $(EB_EXE): $(LMOD_EXE) $(PYTHON_EXE)
-    set -euxo pipefail
     # https://easybuild.readthedocs.io/en/latest/Installation.html
     mkdir -p $(SOURCES_DIR)
-    cd $(SOURCES_DIR)
-    curl -O https://raw.githubusercontent.com/easybuilders/easybuild-framework/develop/easybuild/scripts/bootstrap_eb.py
-    python3 bootstrap_eb.py $(EB_ROOT)
+    cd $(SOURCES_DIR) && curl -O https://raw.githubusercontent.com/easybuilders/easybuild-framework/develop/easybuild/scripts/bootstrap_eb.py
+    source $(SYSTEM_BASHRC) && cd $(SOURCES_DIR) && python3 bootstrap_eb.py $(EB_ROOT)
     # update $MODULEPATH, and load the EasyBuild module
     LINE='module use $(EB_MODULES_ROOT)'
     FILE=$(SYSTEM_BASHRC)
     MSG="Added following line to $$FILE, rerun 'source $$FILE' in your current shell session."
-    grep -qF -- "$$LINE" "$$FILE" || echo "$$LINE" >> "$$FILE"
+    grep -qF -- "$$LINE" "$$FILE" || echo "$$LINE" | sudo tee -a "$$FILE"
     @echo $$MSG
     @echo $$LINE
 
-    # module use $(EB_MODULES_ROOT)
-    # module load EasyBuild
-
 # lmod & lua
-.ONESHELL:
 $(LMOD_EXE): $(LMOD_SRC) $(LUA_EXE) $(MAKE_EXE)
-    set -euxo pipefail
+    # set -euxo pipefail
     # https://lmod.readthedocs.io/en/latest/030_installing.html
-    cd $(SOURCES_DIR)
-    rm -rf Lmod-$(LMOD_VERSION)
-    rm Lmod-$(LMOD_VERSION).tar
-    bunzip2 Lmod-$(LMOD_VERSION).tar.bz2
-    tar xf Lmod-$(LMOD_VERSION).tar
-    cd Lmod-$(LMOD_VERSION)
-    ./configure --prefix=$(LMOD_INSTALL_PREFIX)
-    make install
-
+    -rm -rf $(SOURCES_DIR)/Lmod-$(LMOD_VERSION)
+    -rm $(SOURCES_DIR)/Lmod-$(LMOD_VERSION).tar
+    cd $(SOURCES_DIR) && bunzip2 Lmod-$(LMOD_VERSION).tar.bz2 && tar xf Lmod-$(LMOD_VERSION).tar
+    cd $(SOURCES_DIR)/Lmod-$(LMOD_VERSION) && ./configure --prefix=$(LMOD_INSTALL_PREFIX) && make install
     sudo ln -fs $(LMOD_ROOT)/init/profile $(SYSTEM_PROFILE_D)/z00_lmod.sh
     sudo ln -fs $(LMOD_ROOT)/init/cshrc $(SYSTEM_PROFILE_D)/z00_lmod.csh
     # sudo ln -s /opt/apps/lmod/lmod/init/profile.fish   /etc/fish/conf.d/z00_lmod.fish
 
-.ONESHELL:
 $(LMOD_SRC):
-    set -euxo pipefail
     # https://lmod.readthedocs.io/en/latest/030_installing.html
     mkdir -p $(SOURCES_DIR)
-    cd $(SOURCES_DIR)
-    rm -rf Lmod-$(LMOD_VERSION).tar.bz2
-    wget https://sourceforge.net/projects/lmod/files/Lmod-$(LMOD_VERSION).tar.bz2
+    wget -O $@ https://sourceforge.net/projects/lmod/files/Lmod-$(LMOD_VERSION).tar.bz2/download?use_mirror=netix
 
-.ONESHELL:
 $(LUA_EXE): $(LUA_SRC) $(MAKE_EXE)
     # https://lmod.readthedocs.io/en/latest/030_installing.html
-    cd $(SOURCES_DIR)
-    rm -rf lua-$(LUA_VERSION)
-    rm lua-$(LUA_VERSION).tar
+    -rm -rf  $(SOURCES_DIR)/lua-$(LUA_VERSION)
+    -rm  $(SOURCES_DIR)/lua-$(LUA_VERSION).tar
     # https://www.lua.org/download.html
-    bunzip2 lua-$(LUA_VERSION).tar.bz2
-    tar xf lua-$(LUA_VERSION).tar
-    cd lua-$(LUA_VERSION)
-    ./configure --prefix=$(APPS_ROOT)/lua/$(LUA_VERSION)
-    make
+    cd $(SOURCES_DIR) && bunzip2 lua-$(LUA_VERSION).tar.bz2 && tar xf lua-$(LUA_VERSION).tar
     mkdir -p $(APPS_ROOT)/lua/$(LUA_VERSION)
-    make install
-    cd $(APPS_ROOT)/lua
-    ln -fs $(LUA_VERSION) lua
+    cd $(SOURCES_DIR)/lua-$(LUA_VERSION) && ./configure --prefix=$(APPS_ROOT)/lua/$(LUA_VERSION) && make && make install
+    cd $(APPS_ROOT)/lua && ln -fs $(LUA_VERSION) lua
     sudo mkdir -p $(SYSTEM_LOCAL_BIN)
     sudo ln -fs $(LUA_EXE) $(SYSTEM_LOCAL_BIN)
 
-.ONESHELL:
 $(LUA_SRC):
     # https://lmod.readthedocs.io/en/latest/030_installing.html
-    mkdir -p $(SOURCES_DIR)
-    cd $(SOURCES_DIR)
-    rm -rf lua-$(LUA_VERSION).tar.bz2
     # https://www.lua.org/download.html
-    # curl -R -O http://www.lua.org/ftp/lua-$(LUA_VERSION).tar.gz
-    wget https://sourceforge.net/projects/lmod/files/lua-$(LUA_VERSION).tar.bz2
+    mkdir -p $(SOURCES_DIR)
+    wget -O $@ https://sourceforge.net/projects/lmod/files/lua-$(LUA_VERSION).tar.bz2/download?use_mirror=netix
 
 # easybuild repositories
-eb-repositories: $(EB_GIT_REPO_ROOT)/easybuild $(EB_GIT_REPO_ROOT)/easybuild-easyblocks $(EB_GIT_REPO_ROOT)/easybuild-easyframework $(EB_GIT_REPO_ROOT)/easybuild-easyconfigs $(EB_GIT_REPO_ROOT)/JSC
+eb-repositories: | $(EB_GIT_REPO_ROOT)/easybuild $(EB_GIT_REPO_ROOT)/easybuild-easyblocks $(EB_GIT_REPO_ROOT)/easybuild-framework $(EB_GIT_REPO_ROOT)/easybuild-easyconfigs $(EB_GIT_REPO_ROOT)/JSC
+    touch eb-repositories
 
 $(EB_GIT_REPO_ROOT)/easybuild:
     mkdir -p $(EB_GIT_REPO_ROOT) && cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild.git
@@ -268,19 +242,15 @@ $(EB_GIT_REPO_ROOT)/easybuild:
 $(EB_GIT_REPO_ROOT)/easybuild-easyblocks:
     mkdir -p $(EB_GIT_REPO_ROOT) && cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-easyblocks.git
 
-$(EB_GIT_REPO_ROOT)/easybuild-easyframework:
+$(EB_GIT_REPO_ROOT)/easybuild-framework:
     mkdir -p $(EB_GIT_REPO_ROOT) && cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-framework.git
 
 $(EB_GIT_REPO_ROOT)/easybuild-easyconfigs:
     mkdir -p $(EB_GIT_REPO_ROOT) && cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/easybuilders/easybuild-easyconfigs.git
 
-.ONESHELL:
 $(EB_GIT_REPO_ROOT)/JSC:
     mkdir -p $(EB_GIT_REPO_ROOT)
-    cd $(EB_GIT_REPO_ROOT)
-    git clone https://github.com/jotelha/JSC.git
-    cd JSC
-    git checkout hfr13-eb-4.2
+    cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/jotelha/JSC.git && cd JSC && git checkout hfr13-eb-4.2
 
 # eb env file
 eb_env.sh:
@@ -289,41 +259,40 @@ eb_env.sh:
         export STAGE=$(EB_STAGE)
 
         prefix=$(EB_ROOT)
-        buidlpath=$${prefix}/build
-        container_path=$${prefix}/containers
-        install_path=$${prefix}/easybuild
-        repository_path=$${prefix}/ebfiles_repo
-        sources_path=$${prefix}/sources
+        buidlpath=\$${prefix}/build
+        container_path=\$${prefix}/containers
+        install_path=\$${prefix}/easybuild
+        repository_path=\$${prefix}/ebfiles_repo
+        sources_path=\$${prefix}/sources
 
-        # software_root=$${SOFTWAREROOT}
-        stage=$${STAGE}
-        # stage_path="$${software_root}/Stages/$${stage}"
-        # sources_path="$${HOME}/eb/sources"
+        stage=\$${STAGE}
+        # software_root=\$${SOFTWAREROOT}
+        # stage_path="\$${software_root}/Stages/\$${stage}"
 
-        common_eb_path="$${HOME}/git"
-        common_jsc_eb_path="$${HOME}/git/JSC"
-        gr_path="$${common_eb_path}/easybuild-easyconfigs/easybuild/easyconfigs"
-        jsc_gr_path="$${common_jsc_eb_path}/Golden_Repo/$${stage}"
-        custom_easyblocks_path="$${common_jsc_eb_path}/Custom_EasyBlocks/$${stage}"
-        custom_toolchains_path="$${common_jsc_eb_path}/Custom_Toolchains/$${stage}"
-        custom_mns_path="$${common_jsc_eb_path}/Custom_MNS/$${stage}"
+        common_eb_path="$(EB_GIT_REPO_ROOT)"
+        common_jsc_eb_path="$(EB_GIT_REPO_ROOT)/JSC"
+        gr_path="\$${common_eb_path}/easybuild-easyconfigs/easybuild/easyconfigs"
+        jsc_gr_path="\$${common_jsc_eb_path}/Golden_Repo/\$${stage}"
+        custom_easyblocks_path="\$${common_jsc_eb_path}/Custom_EasyBlocks/\$${stage}"
+        custom_toolchains_path="\$${common_jsc_eb_path}/Custom_Toolchains/\$${stage}"
+        custom_mns_path="\$${common_jsc_eb_path}/Custom_MNS/\$${stage}"
 
-        # export EASYBUILD_ROBOT=$${gr_path}
-        export EASYBUILD_ROBOT_PATHS=$${gr_path}:$${jsc_gr_path}
+        # export EASYBUILD_ROBOT=\$${gr_path}
+        export EASYBUILD_ROBOT_PATHS=\$${gr_path}:\$${jsc_gr_path}
         export EASYBUILD_DETECT_LOADED_MODULES=error
         export EASYBUILD_ALLOW_LOADED_MODULES=EasyBuild
-        export EASYBUILD_SOURCEPATH=$${sources_path}
-        export EASYBUILD_INSTALLPATH=$${install_path}
+        export EASYBUILD_SOURCEPATH=\$${sources_path}
+        export EASYBUILD_INSTALLPATH=\$${install_path}
         export EASYBUILD_BUILDPATH=/dev/shm
-        export EASYBUILD_INCLUDE_TOOLCHAINS="$${custom_toolchains_path}/*.py,$${custom_toolchains_path}/fft/*.py,$${custom_toolchains_path}/compiler/*.py"
-        # export EASYBUILD_INCLUDE_EASYBLOCKS="$${custom_easyblocks_path}/*.py"
+        export EASYBUILD_INCLUDE_TOOLCHAINS="\$${custom_toolchains_path}/*.py,\$${custom_toolchains_path}/fft/*.py,\$${custom_toolchains_path}/compiler/*.py"
+        # export EASYBUILD_INCLUDE_EASYBLOCKS="\$${custom_easyblocks_path}/*.py"
         export EASYBUILD_REPOSITORY=FileRepository
-        export EASYBUILD_REPOSITORYPATH=$${repository_path}
+        export EASYBUILD_REPOSITORYPATH=\$${repository_path}
         export EASYBUILD_SET_GID_BIT=1
         export EASYBUILD_MODULES_TOOL=Lmod
         export EASYBUILD_MODULE_SYNTAX=Lua
-        export EASYBUILD_PREFIX=$${prefix}
-        export EASYBUILD_INCLUDE_MODULE_NAMING_SCHEMES="$${custom_mns_path}/*.py"
+        export EASYBUILD_PREFIX=\$${prefix}
+        export EASYBUILD_INCLUDE_MODULE_NAMING_SCHEMES="\$${custom_mns_path}/*.py"
         export EASYBUILD_MODULE_NAMING_SCHEME=FlexibleCustomHierarchicalMNS
         export EASYBUILD_FIXED_INSTALLDIR_NAMING_SCHEME=1
         export EASYBUILD_EXPERIMENTAL=1
