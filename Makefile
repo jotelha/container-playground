@@ -1,9 +1,11 @@
 .RECIPEPREFIX := $(.RECIPEPREFIX) 
 SHELL := /bin/bash
 
-# general
+# OS-specific
 PKG_MGR=apt-get
+VERSION_ID=20.04
 
+# general
 PREFIX := /mnt/dat
 APPS_ROOT := $(PREFIX)/opt/apps
 SOURCES_DIR := $(PREFIX)/src
@@ -101,12 +103,10 @@ install-lmod: $(LMOD_EXE)
 
 # podman
 $(PODMAN_EXE): $(MAKE_EXE)
-    # CentOS 8
-    sudo dnf -y module disable container-tools
-    sudo dnf -y install 'dnf-command(copr)'
-    sudo dnf -y copr enable rhcontainerbot/container-selinux
-    sudo curl -L -o /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/CentOS_8/devel:kubic:libcontainers:stable.repo
-    sudo dnf -y install podman
+    sudo sh -c "echo 'deb https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_$(VERSION_ID)/ /' > /etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list"
+    curl -L https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable/xUbuntu_$(VERSION_ID)/Release.key | sudo apt-key add -
+    sudo apt-get update -qq
+    sudo apt-get -qq -y install podman
 
 # go & singularity
 .ONESHELL:
@@ -156,23 +156,34 @@ $(SINGULARITY_SRC):
 # docker
 .ONESHELL:
 $(DOCKER_EXE): $(MAKE_EXE)
-    set -euxo pipefail
-    # https://docs.docker.com/engine/install/centos/
-    sudo yum remove -y docker \
-                      docker-client \
-                      docker-client-latest \
-                      docker-common \
-                      docker-latest \
-                      docker-latest-logrotate \
-                      docker-logrotate \
-                      docker-engine
-    sudo yum install -y yum-utils
-    sudo yum-config-manager \
-        --add-repo \
-        https://download.docker.com/linux/centos/docker-ce.repo
-    sudo yum install -y docker-ce docker-ce-cli containerd.io
-    # GPG key: 060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35
-    sudo systemctl start docker
+    # https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+    # accessed: 2020/05/18
+    sudo apt-get remove docker docker-engine docker.io containerd runc
+    sudo apt-get update
+    sudo apt-get -y install \
+        apt-transport-https \
+        ca-certificates \
+        curl \
+        gnupg-agent \
+        software-properties-common
+
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+
+    sudo apt-key fingerprint 0EBFCD88
+
+    sudo add-apt-repository \
+       "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+       eoan \
+       stable"
+
+    # sudo add-apt-repository \
+    #   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+    #   $(lsb_release -cs) \
+    #   stable"
+
+    sudo apt-get update
+    sudo apt-get -y install docker-ce docker-ce-cli containerd.io
+
     # https://docs.docker.com/compose/install/
     # accessed: 2020/05/18
     sudo curl -L "https://github.com/docker/compose/releases/download/$(DOCKER_COMPOSE_VERSION)/docker-compose-$$(uname -s)-$$(uname -m)" -o $(SYSTEM_LOCAL_BIN)/docker-compose
@@ -304,10 +315,10 @@ eb_env.sh:
 
 # misc
 $(MAKE_EXE):
-    sudo yum install -y make
+    sudo $(PKG_MGR) install -y make
 
 $(PYTHON_EXE):
-    sudo yum install -y python3
+    sudo $(PKG_MGR) install -y python3
 
 .PHONY: list
 list:
