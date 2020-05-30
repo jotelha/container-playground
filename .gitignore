@@ -2,5 +2,4 @@
 !.gitignore
 !.inputrc
 !.nanorc
-!install*.sh
 !Makefile
