@@ -1,14 +1,14 @@
 .RECIPEPREFIX := $(.RECIPEPREFIX) 
 SHELL := /bin/bash
 
-# OS-specific
-PKG_MGR=apt-get
-VERSION_ID=20.04
-
 # general
 PREFIX := /mnt/dat
 APPS_ROOT := $(PREFIX)/opt/apps
 SOURCES_DIR := $(PREFIX)/src
+
+# OS-specific
+PKG_MGR=apt-get
+VERSION_ID=20.04
 SYSTEM_PROFILE_D := /etc/profile.d
 # system-dependent fixed
 SYSTEM_BIN := /usr/bin
@@ -16,7 +16,9 @@ SYSTEM_BIN := /usr/bin
 SYSTEM_LOCAL := /usr/local
 SYSTEM_LOCAL_BIN := $(SYSTEM_LOCAL)/bin
 # system-dependent fixed
-SYSTEM_BASHRC := /etc/bashrc
+SYSTEM_BASHRC := /etc/bash.bashrc
+SYSTEM_BASH_PROFILE := /etc/profile
+
 MAKE_EXE := $(SYSTEM_BIN)/make
 # system-dependent fixed
 PYTHON_EXE := $(SYSTEM_BIN)/python3
@@ -24,15 +26,17 @@ PYTHON_EXE := $(SYSTEM_BIN)/python3
 
 # Lua-realted
 LUA_VERSION := 5.1.4.9
-LUA_SRC := $(SOURCES_DIR)/lua-$(LUA_VERSION).tar.bz2
+LUA_SRC := $(SOURCES_DIR)/lua-$(LUA_VERSION).tar
 LUA_ROOT := $(APPS_ROOT)/lua/lua
 # fixed
 LUA_EXE := $(LUA_ROOT)/bin/lua
 # fixed
+LUAC_EXE := $(LUA_ROOT)/bin/luac
+# fixed
 
 # Lmod-related
 LMOD_VERSION := 8.2
-LMOD_SRC := $(SOURCES_DIR)/Lmod-$(LMOD_VERSION).tar.bz2
+LMOD_SRC := $(SOURCES_DIR)/Lmod-$(LMOD_VERSION).tar
 LMOD_INSTALL_PREFIX := $(APPS_ROOT)
 LMOD_ROOT := $(LMOD_INSTALL_PREFIX)/lmod/lmod
 # fixed
@@ -71,14 +75,16 @@ GO_VERSION := 1.14.3
 GO_OS := linux
 GO_ARCH := amd64
 GO_SRC := $(SOURCES_DIR)/go$(GO_VERSION).$(GO_OS)-$(GO_ARCH).tar.gz
+GO_ROOT := $(SYSTEM_LOCAL)/go
+GO_EXE := $(GO_ROOT)/bin/go
 
 # Singularity-related
 SINGULARITY_VERSION := 3.5.2
 SINGULARITY_SRC := $(SOURCES_DIR)/singularity-$(SINGULARITY_VERSION).tar.gz
 SINGULARITY_EXE := $(SYSTEM_LOCAL_BIN)/singularity
 
-.PHONY: all
-all: $(wildcard install-*)
+install-all: install-docker install-podman install-singularity install-eb
+    touch install-all
 
 install-docker: $(DOCKER_EXE)
     touch install-docker
@@ -99,7 +105,10 @@ install-eb: $(EB_EXE)
     touch install-eb
 
 install-lmod: $(LMOD_EXE)
-    install-lmod
+    touch install-lmod
+
+install-lua: $(LUA_EXE)
+    touch install-lua
 
 # podman
 $(PODMAN_EXE): $(MAKE_EXE)
@@ -114,7 +123,7 @@ $(GO_EXE): $(GO_SRC)
     # actually, no sources, just binary package
     # https://golang.org/dl/
     sudo tar -C $(SYSTEM_LOCAL) -xzvf $(GO_SRC) # Extracts the archive
-    LINE='export PATH="$(SYSTEM_LOACL)/go/bin:$$PATH"'
+    LINE='export PATH="$(GO_ROOT)/bin:$$PATH"'
     FILE=$(SYSTEM_BASHRC)
     MSG="Added following line to $$FILE, rerun 'source $$FILE' in your current shell session."
     grep -qF -- "$$LINE" "$$FILE" || echo "$$LINE" | sudo tee -a "$$FILE"
@@ -126,7 +135,7 @@ $(GO_SRC):
     wget -O $@ https://dl.google.com/go/go$(GO_VERSION).$(GO_OS)-$(GO_ARCH).tar.gz  # Downloads the required Go package
 
 
-$(SINGULARITY_EXE): $(SINGULARITY_SRC) $(MAKE_EXE)
+$(SINGULARITY_EXE): $(SINGULARITY_SRC) $(GO_EXE) $(MAKE_EXE)
     # https://sylabs.io/guides/3.5/user-guide/quick_start.html#quick-installation-steps
     # accessed 2020/05/18
     sudo $(PKG_MGR) install -y \
@@ -141,12 +150,9 @@ $(SINGULARITY_EXE): $(SINGULARITY_SRC) $(MAKE_EXE)
         git \
         cryptsetup
 
-    mkdir -p $(SOURCES_DIR)
-    -cd $(SOURCES_DIR) && rm singularity-$(SINGULARITY_VERSION).tar.gz
-    cd $(SOURCES_DIR) && wget https://github.com/sylabs/singularity/releases/download/v$(SINGULARITY_VERSION)/singularity-$(SINGULARITY_VERSION).tar.gz
     -rm -rf $(SOURCES_DIR)/singurlarity
     cd $(SOURCES_DIR) && tar -xzf singularity-$(SINGULARITY_VERSION).tar.gz
-    source $(SYSTEM_BASHRC) && cd $(SOURCES_DIR)/singularity && ./mconfig && make -C builddir && sudo make -C builddir install
+    source $(SYSTEM_BASH_PROFILE) && cd $(SOURCES_DIR)/singularity && ./mconfig && make -C builddir && sudo make -C builddir install
 
 $(SINGULARITY_SRC):
     mkdir -p $(SOURCES_DIR)
@@ -200,10 +206,10 @@ $(EB_EXE): $(LMOD_EXE) $(PYTHON_EXE)
     # https://easybuild.readthedocs.io/en/latest/Installation.html
     mkdir -p $(SOURCES_DIR)
     cd $(SOURCES_DIR) && curl -O https://raw.githubusercontent.com/easybuilders/easybuild-framework/develop/easybuild/scripts/bootstrap_eb.py
-    source $(SYSTEM_BASHRC) && cd $(SOURCES_DIR) && python3 bootstrap_eb.py $(EB_ROOT)
+    source $(SYSTEM_BASH_PROFILE) && cd $(SOURCES_DIR) && python3 bootstrap_eb.py $(EB_ROOT)
     # update $MODULEPATH, and load the EasyBuild module
     LINE='module use $(EB_MODULES_ROOT)'
-    FILE=$(SYSTEM_BASHRC)
+    FILE=$(SYSTEM_BASH_PROFILE)
     MSG="Added following line to $$FILE, rerun 'source $$FILE' in your current shell session."
     grep -qF -- "$$LINE" "$$FILE" || echo "$$LINE" | sudo tee -a "$$FILE"
     @echo $$MSG
@@ -213,9 +219,9 @@ $(EB_EXE): $(LMOD_EXE) $(PYTHON_EXE)
 $(LMOD_EXE): $(LMOD_SRC) $(LUA_EXE) $(MAKE_EXE)
     # set -euxo pipefail
     # https://lmod.readthedocs.io/en/latest/030_installing.html
+    sudo $(PKG_MGR) install tcl-dev
     -rm -rf $(SOURCES_DIR)/Lmod-$(LMOD_VERSION)
-    -rm $(SOURCES_DIR)/Lmod-$(LMOD_VERSION).tar
-    cd $(SOURCES_DIR) && bunzip2 Lmod-$(LMOD_VERSION).tar.bz2 && tar xf Lmod-$(LMOD_VERSION).tar
+    cd $(SOURCES_DIR) && tar xf Lmod-$(LMOD_VERSION).tar
     cd $(SOURCES_DIR)/Lmod-$(LMOD_VERSION) && ./configure --prefix=$(LMOD_INSTALL_PREFIX) && make install
     sudo ln -fs $(LMOD_ROOT)/init/profile $(SYSTEM_PROFILE_D)/z00_lmod.sh
     sudo ln -fs $(LMOD_ROOT)/init/cshrc $(SYSTEM_PROFILE_D)/z00_lmod.csh
@@ -224,25 +230,31 @@ $(LMOD_EXE): $(LMOD_SRC) $(LUA_EXE) $(MAKE_EXE)
 $(LMOD_SRC):
     # https://lmod.readthedocs.io/en/latest/030_installing.html
     mkdir -p $(SOURCES_DIR)
-    wget -O $@ https://sourceforge.net/projects/lmod/files/Lmod-$(LMOD_VERSION).tar.bz2/download?use_mirror=netix
+    -rm $@.bz2
+    -rm $@
+    wget -O $@.bz2 https://sourceforge.net/projects/lmod/files/Lmod-$(LMOD_VERSION).tar.bz2/download?use_mirror=netix
+    bunzip2 -c $@.bz2 > $@
 
 $(LUA_EXE): $(LUA_SRC) $(MAKE_EXE)
     # https://lmod.readthedocs.io/en/latest/030_installing.html
     -rm -rf  $(SOURCES_DIR)/lua-$(LUA_VERSION)
-    -rm  $(SOURCES_DIR)/lua-$(LUA_VERSION).tar
     # https://www.lua.org/download.html
-    cd $(SOURCES_DIR) && bunzip2 lua-$(LUA_VERSION).tar.bz2 && tar xf lua-$(LUA_VERSION).tar
+    cd $(SOURCES_DIR) && tar xf lua-$(LUA_VERSION).tar
     mkdir -p $(APPS_ROOT)/lua/$(LUA_VERSION)
     cd $(SOURCES_DIR)/lua-$(LUA_VERSION) && ./configure --prefix=$(APPS_ROOT)/lua/$(LUA_VERSION) && make && make install
     cd $(APPS_ROOT)/lua && ln -fs $(LUA_VERSION) lua
     sudo mkdir -p $(SYSTEM_LOCAL_BIN)
-    sudo ln -fs $(LUA_EXE) $(SYSTEM_LOCAL_BIN)
+    sudo ln -fs $(LUA_EXE) $(SYSTEM_LOCAL_BIN)/lua
+    sudo ln -fs $(LUAC_EXE) $(SYSTEM_LOCAL_BIN)/luac
 
 $(LUA_SRC):
     # https://lmod.readthedocs.io/en/latest/030_installing.html
     # https://www.lua.org/download.html
     mkdir -p $(SOURCES_DIR)
-    wget -O $@ https://sourceforge.net/projects/lmod/files/lua-$(LUA_VERSION).tar.bz2/download?use_mirror=netix
+    -rm $@.bz2
+    -rm $@
+    wget -O $@.bz2 https://sourceforge.net/projects/lmod/files/lua-$(LUA_VERSION).tar.bz2/download?use_mirror=netix
+    bunzip2 -c $@.bz2 > $@
 
 # easybuild repositories
 eb-repositories: | $(EB_GIT_REPO_ROOT)/easybuild $(EB_GIT_REPO_ROOT)/easybuild-easyblocks $(EB_GIT_REPO_ROOT)/easybuild-framework $(EB_GIT_REPO_ROOT)/easybuild-easyconfigs $(EB_GIT_REPO_ROOT)/JSC
