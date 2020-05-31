@@ -60,6 +60,10 @@ EB_MODULES_ROOT := $(EB_ROOT)/modules/all
 EB_STAGE := 2019a
 EB_GIT_REPO_ROOT := $(EB_ROOT)/git
 
+# eb-dev
+EB_DEV_ROOT := $(PREFIX)/opt/easybuild-devel
+EB_DEV_MODULE_FILE := $(EB_DEV_ROOT)/modules/EasyBuild-develop
+
 # Docker-related
 # TODO: specific version
 DOCKER_COMPOSE_VERSION := 1.25.5
@@ -104,6 +108,9 @@ configure-eb: install-eb eb_env.sh eb-repositories
 
 install-eb: $(EB_EXE)
     touch install-eb
+
+install-eb-dev: $(EB_DEV_MODULE_FILE)
+    touch install-eb-dev
 
 install-lmod: $(LMOD_EXE)
     touch install-lmod
@@ -186,7 +193,7 @@ $(EB_EXE): $(LMOD_EXE) $(PYTHON_EXE)
     cd $(SOURCES_DIR) && curl -O https://raw.githubusercontent.com/easybuilders/easybuild-framework/develop/easybuild/scripts/bootstrap_eb.py
     source $(BASH_PROFILE) && cd $(SOURCES_DIR) && python3 bootstrap_eb.py $(EB_ROOT)
     # update $MODULEPATH, and load the EasyBuild module
-    echo 'module use $(EB_MODULES_ROOT)' | sudo tee $(SYSTEM_PROFILE_D)/eb_module_env.sh
+    echo 'module use $(EB_MODULES_ROOT)' | sudo tee $(SYSTEM_PROFILE_D)/z10_eb.sh
 
 # lmod & lua
 $(LMOD_EXE): $(LMOD_SRC) $(LUA_EXE) $(MAKE_EXE)
@@ -249,6 +256,13 @@ $(EB_GIT_REPO_ROOT)/JSC:
     mkdir -p $(EB_GIT_REPO_ROOT)
     cd $(EB_GIT_REPO_ROOT) && git clone https://github.com/jotelha/JSC.git && cd JSC && git checkout hfr13-eb-4.2
 
+$(EB_DEV_MODULE_FILE):
+    cd $(SOURCES_DIR) && curl -O https://raw.githubusercontent.com/easybuilders/easybuild-framework/master/easybuild/scripts/install-EasyBuild-develop.sh
+    # run downloaded script, specifying *your* GitHub username and the installation prefix
+    cd $(SOURCES_DIR) && bash install-EasyBuild-develop.sh easybuilders $(EB_DEV_ROOT)
+    # update $MODULEPATH via 'module use', and load the module
+    echo 'module use $(EB_DEV_ROOT)/modules' | sudo tee $(SYSTEM_PROFILE_D)/z20_eb_dev.sh
+
 # eb env file
 eb_env.sh:
     cat <<- EOF > $@
@@ -290,13 +304,17 @@ eb_env.sh:
         export EASYBUILD_MODULE_SYNTAX=Lua
         export EASYBUILD_PREFIX=\$${prefix}
         export EASYBUILD_INCLUDE_MODULE_NAMING_SCHEMES="\$${custom_mns_path}/*.py"
-        export EASYBUILD_MODULE_NAMING_SCHEME=FlexibleCustomHierarchicalMNS
+        # export EASYBUILD_MODULE_NAMING_SCHEME=FlexibleCustomHierarchicalMNS
         export EASYBUILD_FIXED_INSTALLDIR_NAMING_SCHEME=1
         export EASYBUILD_EXPERIMENTAL=1
         export EASYBUILD_MINIMAL_TOOLCHAINS=1
         export EASYBUILD_USE_EXISTING_MODULES=1
         # export EASYBUILD_TEST_REPORT_ENV_FILTER="\*PS1\*|PROMPT\*|\*LICENSE\*"
     EOF
+
+# eb dev env file
+eb_dev_env.sh: eb_env.sh
+    cat eb_env.sh | sed -e 's|prefix=$(EB_ROOT)|prefix=$(EB_DEV_ROOT)|' > eb_dev_env.sh
 
 # misc
 $(MAKE_EXE):
@@ -309,6 +327,11 @@ $(PYTHON_EXE):
 list:
     @$(MAKE) -pRrq -f $(lastword $(MAKEFILE_LIST)) : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$'
 
+.PHONY: var
+var:
+    $(foreach var,$(.VARIABLES),$(info $(var) = $($(var))))
+
 .PHONY: test
 test:
-    $(foreach var,$(.VARIABLES),$(info $(var) = $($(var))))
+    @$(MAKE) -pRrq -f $(lastword $(MAKEFILE_LIST)) : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort 
+# | egrep -v -e '^[^[:alnum:]]' -e '^$@$$'
