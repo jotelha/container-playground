@@ -88,6 +88,10 @@ SINGULARITY_VERSION := 3.5.2
 SINGULARITY_SRC := $(SOURCES_DIR)/singularity-$(SINGULARITY_VERSION).tar.gz
 SINGULARITY_EXE := $(SYSTEM_LOCAL_BIN)/singularity
 
+# those need enough storage space
+SINGULARITY_TMPDIR := $(PREFIX)/tmp/singularity_tmpdir
+SINGULARITY_CACHEDIR := $(PREFIX)/tmp/singularity_tmpdir
+
 install-all: install-docker install-podman install-singularity install-eb
     touch install-all
 
@@ -263,8 +267,48 @@ $(EB_DEV_MODULE_FILE):
     # update $MODULEPATH via 'module use', and load the module
     echo 'module use $(EB_DEV_ROOT)/modules' | sudo tee $(SYSTEM_PROFILE_D)/z20_eb_dev.sh
 
+singularity_env.sh:
+    cat <<- EOF > $@
+        export SINGULARITY_TMPDIR=$(SINGULARITY_TMPDIR)
+        export SINGULARITY_CACHEDIR=$(SINGULARITY_CACHEDIR)
+    EOF
+
 # eb env file
 eb_env.sh:
+    cat <<- EOF > $@
+        # export SOFTWAREROOT=$HOME/software
+        export STAGE=$(EB_STAGE)
+
+        prefix=$(EB_ROOT)
+        build_path=\$${prefix}/build
+        container_path=\$${prefix}/containers
+        install_path=\$${prefix}
+        repository_path=\$${prefix}/ebfiles_repo
+        sources_path=\$${prefix}/sources
+
+        common_eb_path="$(EB_GIT_REPO_ROOT)"
+        gr_path="\$${common_eb_path}/easybuild-easyconfigs/easybuild/easyconfigs"
+
+        # export EASYBUILD_ROBOT=\$${gr_path}
+        export EASYBUILD_ROBOT_PATHS=\$${gr_path}
+        export EASYBUILD_DETECT_LOADED_MODULES=error
+        export EASYBUILD_ALLOW_LOADED_MODULES=EasyBuild
+        export EASYBUILD_SOURCEPATH=\$${sources_path}
+        export EASYBUILD_INSTALLPATH=\$${install_path}
+        export EASYBUILD_BUILDPATH=\$${build_path}
+        export EASYBUILD_REPOSITORY=FileRepository
+        export EASYBUILD_REPOSITORYPATH=\$${repository_path}
+        export EASYBUILD_SET_GID_BIT=1
+        export EASYBUILD_MODULES_TOOL=Lmod
+        export EASYBUILD_MODULE_SYNTAX=Lua
+        export EASYBUILD_PREFIX=\$${prefix}
+        export EASYBUILD_FIXED_INSTALLDIR_NAMING_SCHEME=1
+        export EASYBUILD_EXPERIMENTAL=1
+        export EASYBUILD_MINIMAL_TOOLCHAINS=1
+        export EASYBUILD_USE_EXISTING_MODULES=1
+    EOF
+
+eb_jsc_env.sh:
     cat <<- EOF > $@
         # export SOFTWAREROOT=$HOME/software
         export STAGE=$(EB_STAGE)
@@ -322,6 +366,11 @@ $(MAKE_EXE):
 
 $(PYTHON_EXE):
     sudo $(PKG_MGR) install -y python3
+
+.PHONY: misc
+misc:
+    sudo $(PKG_MGR) install -y epel-release
+    sudo $(PKG_MGR) install -y nano htop
 
 .PHONY: list
 list:
