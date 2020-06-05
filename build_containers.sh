@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+
 bootstrap_image="shahzebmsiddiqui/default/easybuild:centos-7"
 
 declare -A levels=([DEBUG]=0 [INFO]=1 [WARN]=2 [ERROR]=3)
@@ -20,10 +22,10 @@ log_msg() {
 
 usage() {
   echo -n "
-
 Usage: $(basename "$0") [-dhnv] [--image BOOTSTRAP_IMAGE] [EASY_CONFIG [EASY_CONFIG [ ... ]]]
 
 Build stacked container images in current working directory from BOOTSTRAP_IMAGE (default: ${bootstrap_image}).
+
 "
 }
 
@@ -37,9 +39,9 @@ while true; do
   case "$1" in
     -h | --help ) usage ; exit 0 ;;
     --image) bootstrap_image=$2; shift; shift;;
-    -d | --dry-run ) DRY_RUN=true; shift;;
+    -n | --dry-run ) DRY_RUN=true; shift;;
     -v | --verbose ) LOG_LEVEL=INFO; shift ;;
-    --debug ) LOG_LEVEL=DEBUG; shift ;;
+    -d | --debug ) LOG_LEVEL=DEBUG; shift ;;
     -- ) shift; break ;;
     * ) break ;;
   esac
@@ -51,7 +53,7 @@ EASY_CONFIGS=$@
 mkdir -p /tmp/easybuild/sources
 
 # print some informations
-if (( ${levels[$LOG_LEVEL]} <= ${levels["INFO"] )); then
+if (( ${levels[$LOG_LEVEL]} <= ${levels["INFO"]} )); then
     for ec in ${EASY_CONFIGS[@]}; do
         cmd="eb ${ec} -Dr"
         log_msg INFO "exec: ${cmd}"
@@ -86,17 +88,18 @@ while IFS= read -r layer; do
             if [ -z "${DRY_RUN}" ]; then ${cmd}; fi
 
             # if previous layer empty, then we are at the beginning of the dependency chain, build new image
-            if [ -z "${previous_layer}" ]; do
+            if [ -z "${previous_layer}" ]; then
                 cmd="eb -C --container-build-image ${ecs[@]} --container-config bootstrap=library,from=${bootstrap_image} --experimental --force"
                 log_msg INFO "exec: ${cmd}"
-                elif [ -z "${DRY_RUN}" ]; then ${cmd}; fi
+                if [ -z "${DRY_RUN}" ]; then ${cmd}; fi
             else:
                 IFS=' ' read -r -a previous_ecs <<< "$previous_layer"
                 previous_image="$(join_by _ ${previous_ecs[@]}).sif"
                 cmd="eb -C --container-build-image ${ecs[@]} --container-config bootstrap=localimage,from=${previous_image} --experimental --force"
                 log_msg INFO "exec: ${cmd}"
-                elif [ -z "${DRY_RUN}" ]; then ${cmd}; fi
+                if [ -z "${DRY_RUN}" ]; then ${cmd}; fi
             fi
+        fi
     else
         log_msg INFO "Reached target ${previous_layer}."
     fi
