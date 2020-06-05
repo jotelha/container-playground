@@ -93,7 +93,10 @@ while IFS= read -r layer; do
 
             # if previous layer empty, then we are at the beginning of the dependency chain, build new image
             if [ -z "${previous_layer}" ]; then
-                cmd="eb -C --container-build-image ${ecs[@]} --container-config bootstrap=library,from=${bootstrap_image},eb_args='-l' --experimental --force --container-image-name ${image_name} --container-image-format sif --container-tmpdir ${SINGULARITY_TMPDIR}"
+                cmd="eb -C --container-build-image ${ecs[@]} --containerpath $(pwd) \
+                    --container-config bootstrap=library,from=${bootstrap_image},eb_args='-l' \
+                    --experimental --force --container-image-name ${image_name} \
+                    --container-image-format sif --container-tmpdir ${SINGULARITY_TMPDIR}"
                 log_msg INFO "exec: ${cmd}"
                 if [ -z "${DRY_RUN}" ]; then ${cmd}; fi
             else
@@ -101,7 +104,10 @@ while IFS= read -r layer; do
                 previous_ec_basenames=$(for ec in "${previous_ecs[@]}"; do basename "$ec" ".eb"; done)
                 previous_image_name="$(join_by _ ${previous_ec_basenames[@]})"
                 previous_image_file="${previous_image_name}.sif"
-                cmd="eb -C --container-build-image ${ecs[@]} --container-config bootstrap=localimage,from=${previous_image_file},eb_args='-l' --experimental --force --container-image-name ${image_name} --container-image-format sif --container-tmpdir ${SINGULARITY_TMPDIR}"
+                cmd="eb -C --container-build-image ${ecs[@]} --containerpath $(pwd) \
+                    --container-config bootstrap=localimage,from=${previous_image_file},eb_args='-l' \
+                    --experimental --force --container-image-name ${image_name} \
+                    --container-image-format sif --container-tmpdir ${SINGULARITY_TMPDIR}"
                 log_msg INFO "exec: ${cmd}"
                 if [ -z "${DRY_RUN}" ]; then ${cmd}; fi
             fi
