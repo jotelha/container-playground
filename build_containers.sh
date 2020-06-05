@@ -15,10 +15,9 @@ log_msg() {
     [[ ${levels[$log_priority]} ]] || return 1
 
     #check if level is enough
-    (( ${levels[$log_priority]} < ${levels[$LOG_LEVEL]} )) && return 2
-
-    #log here
-    echo "${log_priority} : ${log_message}"
+    if (( ${levels[$log_priority]} >= ${levels[$LOG_LEVEL]} )); then
+        echo "${log_priority} : ${log_message}"
+    fi
 }
 
 usage() {
@@ -85,7 +84,7 @@ while IFS= read -r layer; do
         log_msg INFO "image: ${image_file}"
 
         if [ -f "${image_file}" ]; then
-            log_msg INFO "skipped: '${image}' exists already."
+            log_msg INFO "skipped: '${image_file}' exists already."
         else
             cmd="eb ${layer[@]} --fetch --sourcepath /tmp/easybuild/sources"
             log_msg INFO "exec: ${cmd}"
