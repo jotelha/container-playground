@@ -5,6 +5,7 @@ bootstrap_image="shahzebmsiddiqui/default/easybuild:centos-7"
 
 declare -A levels=([DEBUG]=0 [INFO]=1 [WARN]=2 [ERROR]=3)
 LOG_LEVEL="WARN"
+DRY_RUN=
 
 log_msg() {
     local log_priority=$1
@@ -50,7 +51,9 @@ done
 # positional arguments
 EASY_CONFIGS=$@
 
-mkdir -p /tmp/easybuild/sources
+mkdir -p "$(pwd)/sources"
+mkdir -p /tmp/easybuild/
+ln -sf "$(pwd)/sources" /tmp/easybuild/sources
 
 # print some informations
 if (( ${levels[$LOG_LEVEL]} <= ${levels["INFO"]} )); then
@@ -65,22 +68,23 @@ if (( ${levels[$LOG_LEVEL]} <= ${levels["INFO"]} )); then
 fi
 
 # even with 'terse', eb prints log lines prefixed with '=='
-cmd="eb ${EASY_CONFIGS[@]} --dep-graph-layers -r --terse | grep -v '==' > eb_layer_lists.txt"
+cmd="eb ${EASY_CONFIGS[@]} --dep-graph-layers -r --terse"
 log_msg INFO "exec: ${cmd}"
-${cmd}
+${cmd} | grep -v '==' > eb_layer_lists.txt
 
 previous_layer=
 while IFS= read -r layer; do
-    IFS=' ' read -r -a ecs <<< "$layer"
-
-    if [ -z "${layer}" ]; then
+    if [ -n "${layer}" ]; then
+        IFS=' ' read -r -a ecs <<< "$layer"
         log_msg INFO "layer: ${layer}"
 
-        image="$(join_by _ $ecs[@]).sif"
+        ec_basenames=$(for ec in "${ecs[@]}"; do basename "$ec" ".eb"; done)
+        image_name="$(join_by _ ${ec_basenames[@]})"
+        image_file="${image_name}.sif"
 
-        log_msg INFO "image: ${image}"
+        log_msg INFO "image: ${image_file}"
 
-        if [ -f "${image}" ]; then
+        if [ -f "${image_file}" ]; then
             log_msg INFO "skipped: '${image}' exists already."
         else
             cmd="eb ${layer[@]} --fetch --sourcepath /tmp/easybuild/sources"
@@ -89,13 +93,15 @@ while IFS= read -r layer; do
 
             # if previous layer empty, then we are at the beginning of the dependency chain, build new image
             if [ -z "${previous_layer}" ]; then
-                cmd="eb -C --container-build-image ${ecs[@]} --container-config bootstrap=library,from=${bootstrap_image} --experimental --force"
+                cmd="eb -C --container-build-image ${ecs[@]} --container-config bootstrap=library,from=${bootstrap_image},eb_args='-l' --experimental --force --container-image-name ${image_name} --container-image-format sif --container-tmpdir ${SINGULARITY_TMPDIR}"
                 log_msg INFO "exec: ${cmd}"
                 if [ -z "${DRY_RUN}" ]; then ${cmd}; fi
-            else:
+            else
                 IFS=' ' read -r -a previous_ecs <<< "$previous_layer"
-                previous_image="$(join_by _ ${previous_ecs[@]}).sif"
-                cmd="eb -C --container-build-image ${ecs[@]} --container-config bootstrap=localimage,from=${previous_image} --experimental --force"
+                previous_ec_basenames=$(for ec in "${previous_ecs[@]}"; do basename "$ec" ".eb"; done)
+                previous_image_name="$(join_by _ ${previous_ec_basenames[@]})"
+                previous_image_file="${previous_image_name}.sif"
+                cmd="eb -C --container-build-image ${ecs[@]} --container-config bootstrap=localimage,from=${previous_image_file},eb_args='-l' --experimental --force --container-image-name ${image_name} --container-image-format sif --container-tmpdir ${SINGULARITY_TMPDIR}"
                 log_msg INFO "exec: ${cmd}"
                 if [ -z "${DRY_RUN}" ]; then ${cmd}; fi
             fi
