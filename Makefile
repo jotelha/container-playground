@@ -1,9 +1,11 @@
 .RECIPEPREFIX := $(.RECIPEPREFIX) 
 SHELL := /bin/bash
 
-# general
-PREFIX := /mnt/dat
-APPS_ROOT := $(PREFIX)/opt/apps
+# prefix
+PREFIX := /mnt/opt
+# prefix for lmod modules outside of easybuild environment (i.e. lua & lmod modules)
+APPS_ROOT := $(PREFIX)/apps
+# path for temporary source download
 SOURCES_DIR := $(PREFIX)/src
 
 # OS-specific
@@ -51,17 +53,17 @@ LMOD_MODULES_ROOT := $(LMOD_ROOT)/modulefiles
 
 # eb-related
 EB_VERSION := 4.2.1
-EB_ROOT := $(PREFIX)/opt/easybuild
+EB_ROOT := $(PREFIX)/easybuild
 EB_EXE := $(EB_ROOT)/software/EasyBuild/$(EB_VERSION)/bin/eb
 # fixed
 EB_MODULES_ROOT := $(EB_ROOT)/modules/all
 # fixed
 
 EB_STAGE := 2019a
-EB_GIT_REPO_ROOT := $(EB_ROOT)/git
+EB_GIT_REPO_ROOT := $(PREFIX)/easybuild-devel
 
 # eb-dev
-EB_DEV_ROOT := $(PREFIX)/opt/easybuild-devel
+EB_DEV_ROOT := $(PREFIX)/easybuild-devel
 EB_DEV_MODULE_FILE := $(EB_DEV_ROOT)/modules/EasyBuild-develop
 
 # Docker-related

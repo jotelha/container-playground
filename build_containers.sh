@@ -26,6 +26,7 @@ Usage: $(basename "$0") [-dhnv] [--image BOOTSTRAP_IMAGE] [EASY_CONFIG [EASY_CON
 
 Build stacked container images in current working directory from BOOTSTRAP_IMAGE (default: ${bootstrap_image}).
 
+Expects environment variable SINGULARITY_TMPDIR to be set.
 "
 }
 
@@ -54,6 +55,13 @@ mkdir -p "$(pwd)/sources"
 mkdir -p /tmp/easybuild/
 ln -sf "$(pwd)/sources" /tmp/easybuild/sources
 
+# always cap concatenated recipe and image names at maximum file name length - reserved length
+NAME_MAX=$(getconf NAME_MAX .)
+RESERVED_LENGTH=32
+MAX_NAME_LENGTH=$(( ${NAME_MAX} - ${RESERVED_LENGTH} ))
+log_msg INFO "system max filename length: ${NAME_MAX}"
+log_msg INFO "derived max name length: ${MAX_NAME_LENGTH}"
+
 # print some informations
 if (( ${levels[$LOG_LEVEL]} <= ${levels["INFO"]} )); then
     for ec in ${EASY_CONFIGS[@]}; do
@@ -61,7 +69,7 @@ if (( ${levels[$LOG_LEVEL]} <= ${levels["INFO"]} )); then
         log_msg INFO "exec: ${cmd}"
         ${cmd}
     done
-    cmd="eb ${EASY_CONFIGS[@]} --dep-graph-layers -r --terse --debug"
+    cmd="eb ${EASY_CONFIGS[@]} --dep-graph-layers -r --debug"
     log_msg INFO "exec: ${cmd}"
     ${cmd}
 fi
@@ -78,9 +86,14 @@ while IFS= read -r layer; do
         log_msg INFO "layer: ${layer}"
 
         ec_basenames=$(for ec in "${ecs[@]}"; do basename "$ec" ".eb"; done)
-        image_name="$(join_by _ ${ec_basenames[@]})"
-        image_file="${image_name}.sif"
 
+        image_name="$(join_by _ ${ec_basenames[@]})"
+        log_msg INFO "full name: ${image_name}"
+
+        image_name="${image_name:0:${MAX_NAME_LENGTH}}"
+        log_msg INFO "capped name: ${image_name}"
+
+        image_file="${image_name}.sif"
         log_msg INFO "image: ${image_file}"
 
         if [ -f "${image_file}" ]; then
@@ -101,8 +114,16 @@ while IFS= read -r layer; do
             else
                 IFS=' ' read -r -a previous_ecs <<< "$previous_layer"
                 previous_ec_basenames=$(for ec in "${previous_ecs[@]}"; do basename "$ec" ".eb"; done)
+
                 previous_image_name="$(join_by _ ${previous_ec_basenames[@]})"
+                log_msg INFO "full previous name: ${previous_image_name}"
+
+                previous_image_name="${previous_image_name:0:${MAX_NAME_LENGTH}}"
+                log_msg INFO "capped previous name: ${previous_image_name}"
+
                 previous_image_file="${previous_image_name}.sif"
+                log_msg INFO "previous image: ${previous_image_file}"
+
                 cmd="eb -C --container-build-image ${ecs[@]} --containerpath $(pwd) \
                     --container-config bootstrap=localimage,from=${previous_image_file},eb_args='-l' \
                     --experimental --force --container-image-name ${image_name} \
