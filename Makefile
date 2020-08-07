@@ -66,6 +66,10 @@ EB_GIT_REPO_ROOT := $(PREFIX)/easybuild-devel
 EB_DEV_ROOT := $(PREFIX)/easybuild-devel
 EB_DEV_MODULE_FILE := $(EB_DEV_ROOT)/modules/EasyBuild-develop
 
+# eb-dev
+EB_JSC_ROOT := $(PREFIX)/easybuild-jsc
+EB_JSC_DEV_ROOT := $(PREFIX)/easybuild-jsc-devel
+
 # Docker-related
 # TODO: specific version
 DOCKER_COMPOSE_VERSION := 1.25.5
@@ -315,7 +319,7 @@ eb_jsc_env.sh:
         # export SOFTWAREROOT=$HOME/software
         export STAGE=$(EB_STAGE)
 
-        prefix=$(EB_ROOT)
+        prefix=$(EB_JSC_ROOT)
         build_path=\$${prefix}/build
         container_path=\$${prefix}/containers
         install_path=\$${prefix}
@@ -326,23 +330,22 @@ eb_jsc_env.sh:
         # software_root=\$${SOFTWAREROOT}
         # stage_path="\$${software_root}/Stages/\$${stage}"
 
-        common_eb_path="$(EB_GIT_REPO_ROOT)"
-        common_jsc_eb_path="$(EB_GIT_REPO_ROOT)/JSC"
-        gr_path="\$${common_eb_path}/easybuild-easyconfigs/easybuild/easyconfigs"
-        jsc_gr_path="\$${common_jsc_eb_path}/Golden_Repo/\$${stage}"
-        custom_easyblocks_path="\$${common_jsc_eb_path}/Custom_EasyBlocks/\$${stage}"
-        custom_toolchains_path="\$${common_jsc_eb_path}/Custom_Toolchains/\$${stage}"
-        custom_mns_path="\$${common_jsc_eb_path}/Custom_MNS/\$${stage}"
+        common_eb_path="$(EB_GIT_REPO_ROOT)/JSC"
+
+        gr_path="\$${common_eb_path}/Golden_Repo/\$${stage}"
+        custom_easyblocks_path="\$${common_eb_path}/Custom_EasyBlocks/\$${stage}"
+        custom_toolchains_path="\$${common_eb_path}/Custom_Toolchains/\$${stage}"
+        custom_mns_path="\$${common_eb_path}/Custom_MNS/\$${stage}"
 
         # export EASYBUILD_ROBOT=\$${gr_path}
-        export EASYBUILD_ROBOT_PATHS=\$${gr_path}:\$${jsc_gr_path}
+        export EASYBUILD_ROBOT_PATHS=\$${gr_path}
         export EASYBUILD_DETECT_LOADED_MODULES=error
         export EASYBUILD_ALLOW_LOADED_MODULES=EasyBuild
         export EASYBUILD_SOURCEPATH=\$${sources_path}
         export EASYBUILD_INSTALLPATH=\$${install_path}
         export EASYBUILD_BUILDPATH=\$${build_path}
         export EASYBUILD_INCLUDE_TOOLCHAINS="\$${custom_toolchains_path}/*.py,\$${custom_toolchains_path}/fft/*.py,\$${custom_toolchains_path}/compiler/*.py"
-        # export EASYBUILD_INCLUDE_EASYBLOCKS="\$${custom_easyblocks_path}/*.py"
+        export EASYBUILD_INCLUDE_EASYBLOCKS="\$${custom_easyblocks_path}/*.py"
         export EASYBUILD_REPOSITORY=FileRepository
         export EASYBUILD_REPOSITORYPATH=\$${repository_path}
         export EASYBUILD_SET_GID_BIT=1
@@ -350,7 +353,7 @@ eb_jsc_env.sh:
         export EASYBUILD_MODULE_SYNTAX=Lua
         export EASYBUILD_PREFIX=\$${prefix}
         export EASYBUILD_INCLUDE_MODULE_NAMING_SCHEMES="\$${custom_mns_path}/*.py"
-        # export EASYBUILD_MODULE_NAMING_SCHEME=FlexibleCustomHierarchicalMNS
+        export EASYBUILD_MODULE_NAMING_SCHEME=FlexibleCustomHierarchicalMNS
         export EASYBUILD_FIXED_INSTALLDIR_NAMING_SCHEME=1
         export EASYBUILD_EXPERIMENTAL=1
         export EASYBUILD_MINIMAL_TOOLCHAINS=1
@@ -361,6 +364,9 @@ eb_jsc_env.sh:
 # eb dev env file
 eb_dev_env.sh: eb_env.sh
     cat eb_env.sh | sed -e 's|prefix=$(EB_ROOT)|prefix=$(EB_DEV_ROOT)|' > eb_dev_env.sh
+
+# eb_jsc_dev_env.sh: eb_jsc_env.sh
+#    cat eb_jsc_env.sh | sed -e 's|prefix=$(EB_JSC_ROOT)|prefix=$(EB_JSC_DEV_ROOT)|' > eb_jsc_dev_env.sh
 
 # misc
 $(MAKE_EXE):

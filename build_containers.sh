@@ -90,8 +90,10 @@ while IFS= read -r layer; do
         image_name="$(join_by _ ${ec_basenames[@]})"
         log_msg INFO "full name: ${image_name}"
 
-        image_name="${image_name:0:${MAX_NAME_LENGTH}}"
-        log_msg INFO "capped name: ${image_name}"
+        if (( ${#image_name} > ${MAX_NAME_LENGTH} )); then
+            image_name="${image_name:0:${MAX_NAME_LENGTH}}"
+            log_msg INFO "capped name: ${image_name}"
+        fi
 
         image_file="${image_name}.sif"
         log_msg INFO "image: ${image_file}"
@@ -106,7 +108,7 @@ while IFS= read -r layer; do
             # if previous layer empty, then we are at the beginning of the dependency chain, build new image
             if [ -z "${previous_layer}" ]; then
                 cmd="eb -C --container-build-image ${ecs[@]} --containerpath $(pwd) \
-                    --container-config bootstrap=library,from=${bootstrap_image},eb_args='-l' \
+                    --container-config bootstrap=library,from=${bootstrap_image},eb_args=-l \
                     --experimental --force --container-image-name ${image_name} \
                     --container-image-format sif --container-tmpdir ${SINGULARITY_TMPDIR}"
                 log_msg INFO "exec: ${cmd}"
@@ -118,14 +120,16 @@ while IFS= read -r layer; do
                 previous_image_name="$(join_by _ ${previous_ec_basenames[@]})"
                 log_msg INFO "full previous name: ${previous_image_name}"
 
-                previous_image_name="${previous_image_name:0:${MAX_NAME_LENGTH}}"
-                log_msg INFO "capped previous name: ${previous_image_name}"
+                if (( ${#previous_image_name} > ${MAX_NAME_LENGTH} )); then
+                    previous_image_name="${previous_image_name:0:${MAX_NAME_LENGTH}}"
+                    log_msg INFO "capped previous name: ${previous_image_name}"
+                fi
 
                 previous_image_file="${previous_image_name}.sif"
                 log_msg INFO "previous image: ${previous_image_file}"
 
                 cmd="eb -C --container-build-image ${ecs[@]} --containerpath $(pwd) \
-                    --container-config bootstrap=localimage,from=${previous_image_file},eb_args='-l' \
+                    --container-config bootstrap=localimage,from=${previous_image_file},eb_args=-l \
                     --experimental --force --container-image-name ${image_name} \
                     --container-image-format sif --container-tmpdir ${SINGULARITY_TMPDIR}"
                 log_msg INFO "exec: ${cmd}"
