@@ -58,6 +58,10 @@ and double-check with
 
     sudo swapon --show
 
+To make swapfile permanent across reboots, add to `/etc/fstab`
+
+    /swapfile swap swap defaults 0 0
+
 # EasyConfig issues
 
 UCX-1.8.0-GCCcore-9.3.0.eb has OS dependency resolved by
