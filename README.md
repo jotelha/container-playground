@@ -1,5 +1,9 @@
 # CentOS 8 container playground
 
+## Launch Jupyter container
+
+cd /mnt/dat/work/ && singularity run /mnt/smb/containers/custom/jupyter/jupyter_with_gromacs_imteksim_jotelha.sif
+
 ## EasyBuild
 
 Generate `eb_env.sh`, `eb_jsc_env.sh` and `eb_dev_env.sh` with
