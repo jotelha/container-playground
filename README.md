@@ -2,7 +2,7 @@
 
 ## Launch Jupyter container
 
-cd /mnt/dat/work/ && singularity run /mnt/smb/containers/custom/jupyter/jupyter_with_gromacs_imteksim_jotelha.sif
+cd /mnt/opt/work/ && singularity run /mnt/smb/containers/custom/jupyter/jupyter_with_gromacs_imteksim_jotelha.sif
 
 ## EasyBuild
 
@@ -26,6 +26,18 @@ or
 
     module load EasyBuild-devel
     source eb_ev_env.sh
+
+
+## Podman configuration
+
+To use a custom cache location, set
+
+    [storage]
+      driver = "vfs"
+      graphroot = "/mnt/dat/containers/storage"
+
+within `~/.config/containers/storage.conf`
+
 
 ## Singularity cache
 
